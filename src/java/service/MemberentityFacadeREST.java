@@ -37,6 +37,9 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.UriInfo;
 
+// CODEFIX add
+import javax.ws.rs.core.GenericEntity;
+
 @Stateless
 @Path("entity.memberentity")
 public class MemberentityFacadeREST extends AbstractFacade<Memberentity> {
@@ -86,6 +89,53 @@ public class MemberentityFacadeREST extends AbstractFacade<Memberentity> {
         return list;
     }
 
+    // CODEFIX : add API to get member data
+    //this function is used by ECommerce_GetMember
+    @GET
+    @Path("getMember")
+    @Produces({"application/json"})
+    public Response getMember(@QueryParam("email") String email) {
+        try {
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/islandfurniture-it07?zeroDateTimeBehavior=convertToNull&user=root&password=12345");
+            String stmt = "SELECT * FROM memberentity m WHERE m.EMAIL=?";
+            PreparedStatement ps = conn.prepareStatement(stmt);
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+            
+            Member m = new Member();
+            m.setId( rs.getLong("ID") );
+            m.setPhone( rs.getString("PHONE") );
+            m.setAddress( rs.getString("ADDRESS") );
+            m.setCity( rs.getString("CITY") );
+            m.setSecurityQuestion( rs.getInt("SECURITYQUESTION") );
+            m.setSecurityAnswer( rs.getString("SECURITYANSWER") );
+            m.setAge( rs.getInt("AGE") );
+            m.setIncome( rs.getInt("INCOME") );
+            m.setName( rs.getString("NAME") );
+            m.setEmail( rs.getString("EMAIL") );
+            m.setLoyaltyPoints( rs.getInt("LOYALTYPOINTS") );
+            // SKIP wishlist for now as it requires some joins
+            m.setCumulativeSpending( rs.getDouble("CUMULATIVESPENDING") );
+            
+            // Is it okay to do it like this or should EntityManager be used?
+            GenericEntity<Member> entity = new GenericEntity<Member>(m) {
+            };
+            return Response
+                    .status(200)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Headers", "origin, content-type, accept, authorization")
+                    .header("Access-Control-Allow-Credentials", "true")
+                    .header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD")
+                    .header("Access-Control-Max-Age", "1209600")
+                    .entity(entity)
+                    .build();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+    }
+    
     //this function is used by ECommerce_MemberLoginServlet
     @GET
     @Path("login")
