@@ -136,6 +136,58 @@ public class MemberentityFacadeREST extends AbstractFacade<Memberentity> {
         }
     }
     
+    // CODEFIX : add API to set member data
+    //this function is used by ECommerce_MemberEditProfileServlet
+    @PUT
+    @Path("setMember")
+    @Consumes({"application/xml", "application/json"})
+    public Response setMember(@QueryParam("email") String email, @QueryParam("name") String name, @QueryParam("phone") String phone, 
+                                @QueryParam("address") String address, @QueryParam("securityQn") Integer securityQn, @QueryParam("securityAns") String securityAns, 
+                                @QueryParam("age") Integer age, @QueryParam("income") Integer income, @QueryParam("password") String password) {
+        try {
+            Connection conn = DriverManager.getConnection("jdbc:mysql://localhost:3306/islandfurniture-it07?zeroDateTimeBehavior=convertToNull&user=root&password=12345");
+            PreparedStatement ps;
+            String passwordHash = null;
+            String updateStmt = "UPDATE memberentity SET NAME=?, PHONE=?, ADDRESS=?, SECURITYQUESTION=?, SECURITYANSWER=?, AGE=?, INCOME=?";
+            if(password != null && !password.isEmpty()) {
+                // setting new password
+                String stmt = "SELECT * FROM memberentity m WHERE m.EMAIL=?";
+                ps = conn.prepareStatement(stmt);
+                ps.setString(1, email);
+                ResultSet rs = ps.executeQuery();
+                rs.next();
+                String passwordSalt = rs.getString("PASSWORDSALT");
+                passwordHash = generatePasswordHash(passwordSalt, password);
+                updateStmt += ", PASSWORDHASH=?";
+            }
+            updateStmt += " WHERE EMAIL=?";
+            ps = conn.prepareStatement(updateStmt);
+            ps.setString(1, name);
+            ps.setString(2, phone);
+            ps.setString(3, address);
+            ps.setInt(4, securityQn);
+            ps.setString(5, securityAns);
+            ps.setInt(6, age);
+            ps.setInt(7, income);
+            if(passwordHash != null) {
+                ps.setString(8, passwordHash);
+                ps.setString(9, email);
+            }
+            else {
+                ps.setString(8, email);
+            }
+            
+            int result = ps.executeUpdate();
+            
+            if(result > 0) {
+                return Response.status(Response.Status.OK).build();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+        return Response.status(Response.Status.BAD_REQUEST).build();
+    }
+    
     //this function is used by ECommerce_MemberLoginServlet
     @GET
     @Path("login")
